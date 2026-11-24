@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.sqlite3
+.env
+.DS_Store
+
+# Common local-only artifacts
+.env.*
+venv/
+env/
+*.sqlite3-*
+*.log
+*.wav
+*.flac
+*.mp3
+*.onnx
+*.safetensors
+*.gguf
+build/
+dist/
+*.egg-info/
