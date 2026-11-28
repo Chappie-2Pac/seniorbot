@@ -11,7 +11,7 @@ speech, bounded memory, and explicit safety policy.
 The project demonstrates how I design an AI product as a set of replaceable,
 testable contracts instead of one tightly coupled hardware application.
 
-The [Seniorbot portfolio case study](https://werkstatt-core.ludwig-grosse484994.chatgpt.site/seniorbot)
+The [Seniorbot portfolio case study](https://werkstatt-core.ludwig-grosse484994.chatgpt.site/en/seniorbot)
 shows the wider local edge-AI integration story and the runtime evidence around
 this public core.
 
