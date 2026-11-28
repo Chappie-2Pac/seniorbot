@@ -1,65 +1,93 @@
 # Seniorbot
 
-Seniorbot is a hardware-agnostic voice-assistant core shaped for a Jetson-class
-edge device and an s6-rc based runtime. The public export keeps the reusable
-architecture and deterministic text tests separate from the hardware lab.
+## A deterministic voice-assistant core for local edge AI
+
+Seniorbot is a hardware-agnostic Python core for voice assistants that combine
+automatic speech recognition, dialogue state, local language models, text-to-
+speech, bounded memory, and explicit safety policy.
+
+The project demonstrates how I design an AI product as a set of replaceable,
+testable contracts instead of one tightly coupled hardware application.
 
 ## Architecture
 
 ```text
-Hardware integration: capture audio and provide its path
-  -> VoicePipeline.handle_audio
-       |-- ASR adapter -> transcribed text
-       |-- Text policy, DialogueState and MemoryState
-       |-- LLM adapter (optional fast/full routing)
-       +-- TTS adapter -> synthesized audio path
-Hardware integration: play the synthesized audio
+audio input
+    -> ASR adapter
+    -> text policy and bounded dialogue state
+    -> deterministic fast/full LLM routing
+    -> bounded memory context
+    -> TTS adapter
+    -> audio output
 ```
 
-- `seniorbot/contracts.py` defines stable ASR, LLM, TTS, and lifecycle data contracts.
-- `seniorbot/adapters.py` isolates model and hardware implementations behind protocols.
-- `seniorbot/pipeline.py` owns the text boundary and the ASR-to-LLM-to-TTS orchestration.
-- `seniorbot/dialogue.py` keeps bounded turn state; `seniorbot/memory.py` provides explicit STM/MTM/LTM-style state and conservative retrieval without implicit disk writes.
-- `seniorbot/routing.py` implements deterministic fast/full model routing and a bounded in-memory response cache.
-- `services/full-s6/` contains the minimal s6-rc service contract and dependency graph.
+The pipeline is implemented in `seniorbot/pipeline.py`. ASR, LLM, and TTS
+integrations are defined by protocols in `seniorbot/adapters.py`; the core can
+therefore be tested with in-process doubles and connected to real hardware or
+model services at the integration boundary.
 
-## Jetson-edge pipeline
+## What I built here
 
-The intended edge flow is capture, speech recognition, policy evaluation,
-bounded context assembly, local model generation, speech synthesis, and
-playback. Each hardware or model implementation is replaceable through an
-adapter. Policy responses can terminate the model path deterministically for
-high-risk markers.
+- Stable contracts for ASR, LLM, TTS, lifecycle, readiness, and streaming.
+- A `VoicePipeline` with explicit text and audio boundaries.
+- Bounded dialogue and memory state with conservative retrieval.
+- Explicit memory promotion, retrieval, and deletion operations.
+- Deterministic fast/full model routing and an in-memory response cache.
+- Confidence-gated streaming decisions for incremental ASR results.
+- Policy decisions that can terminate or prefix a model response before model
+  execution.
+- An s6-rc service topology for readiness, voice processing, and online bundle
+  ownership.
+- A text-first test suite that validates the system without microphone,
+  speaker, model download, network service, or audio recording.
 
-The Full-s6 example demonstrates service lifecycle and dependency ordering.
-The readiness oneshot exits successfully, the voice longrun emits a status
-record and waits for a shutdown signal, and the online bundle composes both.
-The example uses placeholder services for audio readiness and voice processing.
-Device drivers, model weights, network setup, recordings, and deployment
-secrets stay in the hardware lab.
+## Quickstart
 
-## Text tests and hardware lab
-
-The tests use in-process adapter doubles. They validate routing, dialogue state,
-memory retrieval, confidence-gated streaming, and the complete text pipeline
-without a microphone, speaker, model download, network service, or audio file.
-Hardware acceptance belongs to a separate lab gate and should never be inferred
-from a green text-only test run.
-
-With Python 3.10 or newer and pytest installed, run the suite from this directory.
+Python 3.10 or newer is supported.
 
 ```bash
-python3 -m pytest -q -p no:cacheprovider
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install pytest
+python -m pytest -q -p no:cacheprovider
 ```
 
-Expected result: `7 passed`.
+The current suite covers routing, dialogue state, bounded memory, streaming,
+policy decisions, and the complete text pipeline.
 
-## Publication boundary
+Connect concrete adapters through the stable pipeline contract:
 
-This export intentionally contains no Wi-Fi data, local addresses, SSH material,
-API credentials, recordings, personal lists or memories, private paths, email
-addresses, runtime caches, model weights, or device reports.
+```python
+from seniorbot.pipeline import VoicePipeline
+
+pipeline = VoicePipeline(asr=asr_adapter, llm=llm_adapter, tts=tts_adapter)
+pipeline.start()
+turn = pipeline.handle_text("Summarize the latest system status.", route_hint="fast")
+print(turn.response_text)
+```
+
+## Project layout
+
+| Path | Responsibility |
+|---|---|
+| `seniorbot/contracts.py` | ASR, LLM, TTS, lifecycle, and streaming contracts |
+| `seniorbot/adapters.py` | Replaceable integration protocols |
+| `seniorbot/pipeline.py` | End-to-end orchestration from text/audio input to TTS output |
+| `seniorbot/dialogue.py` | Bounded conversation state |
+| `seniorbot/memory.py` | Explicit STM/MTM/LTM-style memory state and retrieval |
+| `seniorbot/routing.py` | Fast/full model routing and response caching |
+| `seniorbot/policy.py` | Deterministic safety decisions |
+| `services/full-s6/` | Minimal s6-rc lifecycle and dependency contract |
+| `tests/` | In-process adapter and pipeline verification |
+
+## Engineering value
+
+Seniorbot is a strong example of edge-AI systems engineering: the model is
+replaceable, hardware is isolated behind adapters, state is bounded, and every
+important boundary can be tested independently. Device drivers, model
+weights, recordings, and deployment configuration belong in the integration
+environment, keeping the core portable and reviewable.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [`LICENSE`](LICENSE).
