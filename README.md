@@ -1,5 +1,7 @@
 # Seniorbot
 
+[![CI](https://github.com/Chappie-2Pac/seniorbot/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Chappie-2Pac/seniorbot/actions/workflows/ci.yml)
+
 ## A deterministic voice-assistant core for local edge AI
 
 Seniorbot is a hardware-agnostic Python core for voice assistants that combine
